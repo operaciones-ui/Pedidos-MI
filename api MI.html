@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Despachos - Logística</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 pb-20">
+
+    <!-- Header -->
+    <header class="bg-slate-900 text-white p-4 sticky top-0 z-10 shadow-md">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <h1 class="font-bold text-lg">📦 Despachos Planta</h1>
+            <button onclick="cargarDatos()" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 transition">🔄 Actualizar</button>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto p-4 space-y-4">
+        
+        <!-- Buscador y Filtros -->
+        <div class="space-y-2">
+            <input type="text" id="buscador" placeholder="🔍 Buscar por cliente, producto o destino..." oninput="filtrarDatos()" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            
+            <div class="flex gap-2 overflow-x-auto pb-1 text-xs">
+                <button onclick="filtrarEstado('TODOS')" class="px-3 py-1.5 bg-slate-900 text-white rounded-lg whitespace-nowrap font-medium shadow-sm">Todos</button>
+                <button onclick="filtrarEstado('Pendiente')" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg whitespace-nowrap font-medium">⏳ Pendientes</button>
+                <button onclick="filtrarEstado('Programado')" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg whitespace-nowrap font-medium">📅 Programados</button>
+                <button onclick="filtrarEstado('Entregado')" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg whitespace-nowrap font-medium">✅ Entregados</button>
+                <button onclick="filtrarEstado('Incidencia')" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg whitespace-nowrap font-medium">⚠️ Incidencia</button>
+                <button onclick="filtrarEstado('Cancelado')" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg whitespace-nowrap font-medium">❌ Cancelado</button>
+            </div>
+        </div>
+
+        <!-- Contenedor de Tarjetas -->
+        <div id="pedidos-container" class="space-y-3">
+            <div class="bg-white p-8 rounded-2xl text-center shadow-sm border border-slate-100">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent mb-2"></div>
+                <p class="text-sm text-slate-500">Cargando despachos...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Botón Flotante para Nuevo Pedido -->
+    <div class="fixed bottom-6 right-6 z-20">
+        <button onclick="abrirModalNuevo()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-4 rounded-full shadow-lg flex items-center justify-center transition transform active:scale-95">
+            ➕
+        </button>
+    </div>
+
+    <!-- Modal Formulario (Crear / Editar) -->
+    <div id="modal-form" class="fixed inset-0 bg-black/50 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h2 id="modal-titulo" class="font-bold text-lg text-slate-900">Nuevo Pedido</h2>
+                <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+            </div>
+            
+            <form id="form-pedido" onsubmit="guardarPedido(event)" class="space-y-3 text-sm">
+                <input type="hidden" id="rowIndex">
+                
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Fecha Salida</label>
+                    <!-- SE QUITÓ EL "required" AQUÍ -->
+                    <input type="text" id="FechaSalida" placeholder="Ej: 05/10/2026 (Opcional)" class="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Cliente</label>
+                    <input type="text" id="Cliente" required placeholder="Nombre del cliente" class="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Destino</label>
+                    <input type="text" id="Destino" placeholder="Lugar de entrega" class="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Producto</label>
+                    <input type="text" id="Producto" placeholder="Descripción del producto" class="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Cantidad</label>
+                        <input type="text" id="Cantidad" placeholder="Volumen / Unidades" class="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Lote</label>
+                        <input type="text" id="Lote" placeholder="N° de Lote" class="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Transporte</label>
+                        <input type="text" id="Transporte" placeholder="Empresa de transporte" class="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Status</label>
+                        <select id="Status" class="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                            <option value="⏳ Pendiente">⏳ Pendiente</option>
+                            <option value="📅 Programado">📅 Programado</option>
+                            <option value="✅ Entregado">✅ Entregado</option>
+                            <option value="⚠ Incidencia">⚠️ Incidencia</option>
+                            <option value="❌ Cancelado">❌ Cancelado</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Observaciones</label>
+                    <textarea id="Observaciones" rows="2" placeholder="Notas adicionales..." class="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+                </div>
+
+                <button type="submit" id="btn-guardar" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-3 rounded-xl shadow transition">
+                    Guardar Pedido
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyMbfZDEus95oGnk-pDrF7omVoo2Zmvzim-3j8JSQve9axgGZdCttn0Gi37g9geX37zfA/exec';
+        let todosLosPedidos = [];
+        let estadoFiltroActivo = 'TODOS';
+
+        async function cargarDatos() {
+            const container = document.getElementById('pedidos-container');
+            try {
+                let response = await fetch(WEB_APP_URL);
+                let data = await response.json();
+                todosLosPedidos = data;
+                renderizarPedidos(todosLosPedidos);
+            } catch (error) {
+                console.error("Error:", error);
+                container.innerHTML = `<div class="bg-red-50 text-red-700 p-4 rounded-xl text-center text-sm">Error al conectar con la planilla.</div>`;
+            }
+        }
+
+        function formatearFecha(fechaStr) {
+            if (!fechaStr) return 'Sin fecha';
+            if (String(fechaStr).includes('T')) {
+                let fecha = new Date(fechaStr);
+                if (!isNaN(fecha)) {
+                    let dia = String(fecha.getUTCDate()).padStart(2, '0');
+                    let mes = String(fecha.getUTCMonth() + 1).padStart(2, '0');
+                    let anio = fecha.getUTCFullYear();
+                    return `${dia}/${mes}/${anio}`;
+                }
+            }
+            return fechaStr;
+        }
+
+        function renderizarPedidos(pedidos) {
+            const container = document.getElementById('pedidos-container');
+            container.innerHTML = '';
+
+            if (pedidos.length === 0) {
+                container.innerHTML = `<div class="bg-white p-6 rounded-2xl text-center text-slate-500 text-sm border">No hay despachos registrados.</div>`;
+                return;
+            }
+
+            pedidos.forEach(item => {
+                let badgeColor = 'bg-slate-100 text-slate-700 border-slate-200';
+                let status = item['Status'] || '';
+                if (status.includes('Entregado')) badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                else if (status.includes('Programado')) badgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
+                else if (status.includes('Pendiente')) badgeColor = 'bg-blue-50 text-blue-700 border-blue-200';
+                else if (status.includes('Incidencia')) badgeColor = 'bg-orange-50 text-orange-700 border-orange-200';
+                else if (status.includes('Cancelado')) badgeColor = 'bg-red-50 text-red-700 border-red-200';
+
+                let fechaLimpia = formatearFecha(item['Fecha Salida']);
+
+                let card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3 transition";
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeColor}">${status}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-500">📅 ${fechaLimpia}</span>
+                            <button onclick='abrirModalEditar(${JSON.stringify(item)})' class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-medium transition">✏️ Editar</button>
+                        </div>
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-base text-slate-900">${item['Cliente'] || 'Sin cliente'}</h2>
+                        <p class="text-xs text-slate-500">📍 Destino: <span class="font-medium text-slate-700">${item['Destino'] || ''}</span></p>
+                    </div>
+                    <div class="bg-slate-50 p-2.5 rounded-xl text-xs space-y-1 text-slate-600 border border-slate-100">
+                        <div class="flex justify-between"><span>📦 <b>Producto:</b></span> <span class="font-medium text-slate-800">${item['Producto'] || ''}</span></div>
+                        <div class="flex justify-between"><span>⚖️ <b>Cantidad:</b></span> <span class="font-medium text-slate-800">${item['Cantidad'] || ''}</span></div>
+                        <div class="flex justify-between"><span>🏷️ <b>Lote:</b></span> <span class="font-medium text-slate-800">${item['Lote'] || ''}</span></div>
+                        <div class="flex justify-between"><span>🚚 <b>Transporte:</b></span> <span class="font-medium text-slate-800">${item['Transporte'] || ''}</span></div>
+                    </div>
+                    ${item['Observaciones'] ? `<div class="text-xs bg-indigo-50/60 text-indigo-900 p-2 rounded-xl border border-indigo-100">💬 <b>Obs:</b> ${item['Observaciones']}</div>` : ''}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function abrirModalNuevo() {
+            document.getElementById('modal-titulo').innerText = 'Nuevo Pedido';
+            document.getElementById('form-pedido').reset();
+            document.getElementById('rowIndex').value = '';
+            document.getElementById('modal-form').classList.remove('hidden');
+        }
+
+        function abrirModalEditar(item) {
+            document.getElementById('modal-titulo').innerText = 'Editar Pedido';
+            document.getElementById('rowIndex').value = item.rowIndex;
+            document.getElementById('FechaSalida').value = item['Fecha Salida'] && item['Fecha Salida'] !== 'Sin fecha' ? formatearFecha(item['Fecha Salida']) : '';
+            document.getElementById('Cliente').value = item['Cliente'] || '';
+            document.getElementById('Destino').value = item['Destino'] || '';
+            document.getElementById('Producto').value = item['Producto'] || '';
+            document.getElementById('Cantidad').value = item['Cantidad'] || '';
+            document.getElementById('Lote').value = item['Lote'] || '';
+            document.getElementById('Transporte').value = item['Transporte'] || '';
+            document.getElementById('Status').value = item['Status'] || '⏳ Pendiente';
+            document.getElementById('Observaciones').value = item['Observaciones'] || '';
+            
+            document.getElementById('modal-form').classList.remove('hidden');
+        }
+
+        function cerrarModal() {
+            document.getElementById('modal-form').classList.add('hidden');
+        }
+
+        async function guardarPedido(event) {
+            event.preventDefault();
+            const btn = document.getElementById('btn-guardar');
+            btn.innerText = 'Guardando...';
+            btn.disabled = true;
+
+            const rowIndex = document.getElementById('rowIndex').value;
+            const payload = {
+                action: rowIndex ? 'update' : 'create',
+                rowIndex: rowIndex ? Number(rowIndex) : undefined,
+                'Fecha Salida': document.getElementById('FechaSalida').value,
+                'Cliente': document.getElementById('Cliente').value,
+                'Destino': document.getElementById('Destino').value,
+                'Producto': document.getElementById('Producto').value,
+                'Cantidad': document.getElementById('Cantidad').value,
+                'Lote': document.getElementById('Lote').value,
+                'Transporte': document.getElementById('Transporte').value,
+                'Status': document.getElementById('Status').value,
+                'Observaciones': document.getElementById('Observaciones').value,
+            };
+
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                cerrarModal();
+                cargarDatos();
+            } catch (error) {
+                console.error("Error al guardar:", error);
+                alert('Hubo un error al guardar el pedido.');
+            } finally {
+                btn.innerText = 'Guardar Pedido';
+                btn.disabled = false;
+            }
+        }
+
+        function filtrarDatos() {
+            let texto = document.getElementById('buscador').value.toLowerCase();
+            let filtrados = todosLosPedidos.filter(item => {
+                let cliente = String(item['Cliente'] || '').toLowerCase();
+                let producto = String(item['Producto'] || '').toLowerCase();
+                let destino = String(item['Destino'] || '').toLowerCase();
+                
+                let coincideTexto = cliente.includes(texto) || producto.includes(texto) || destino.includes(texto);
+                let coincideEstado = estadoFiltroActivo === 'TODOS' || String(item['Status']).includes(estadoFiltroActivo);
+                
+                return coincideTexto && coincideEstado;
+            });
+            renderizarPedidos(filtrados);
+        }
+
+        function filtrarEstado(estado) {
+            estadoFiltroActivo = estado;
+            filtrarDatos();
+        }
+
+        cargarDatos();
+    </script>
+</body>
+</html>
